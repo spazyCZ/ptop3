@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read  # minimum needed for checkout
+
 jobs:
   test:
     uses: ./.github/workflows/ci.yml
@@ -12,6 +15,8 @@ jobs:
   publish:
     needs: [test]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read  # checkout only
 
     steps:
       - uses: actions/checkout@v4
