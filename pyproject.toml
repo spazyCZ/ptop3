@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ptop3"
-version = "0.1.0"
+version = "0.1.1"
 description = "TUI process monitor that groups processes by application"
 requires-python = ">=3.10"
 dependencies = ["psutil>=5.9"]
@@ -41,7 +41,7 @@ strict = false
 ignore_missing_imports = true
 
 [tool.bumpversion]
-current_version = "0.1.0"
+current_version = "0.1.1"
 commit = true
 commit_args = "--no-verify"
 tag = true

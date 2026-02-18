@@ -1,4 +1,4 @@
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from ptop3.monitor import aggregate, get_proc_rows, normalize_app_name
 
