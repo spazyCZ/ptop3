@@ -28,9 +28,6 @@ jobs:
     needs: [test, github-release]
     if: "!contains(github.ref_name, '-')"  # skip pre-release tags like v0.1.1-rc1
     runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -39,3 +36,5 @@ jobs:
       - run: pip install build
       - run: python -m build
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}

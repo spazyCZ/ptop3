@@ -12,9 +12,6 @@ jobs:
   publish:
     needs: [test]
     runs-on: ubuntu-latest
-    environment: testpypi
-    permissions:
-      id-token: write
 
     steps:
       - uses: actions/checkout@v4
@@ -34,3 +31,4 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
