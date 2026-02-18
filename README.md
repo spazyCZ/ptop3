@@ -1,7 +1,7 @@
 # ptop3
 
 [![PyPI version](https://img.shields.io/pypi/v/ptop3.svg)](https://pypi.org/project/ptop3/)
-[![Python versions](https://img.shields.io/pypi/pyversions/ptop3.svg)](https://pypi.org/project/ptop3/)
+[![Python versions](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12%20|%203.13-blue)](https://pypi.org/project/ptop3/)
 [![CI](https://github.com/spazyCZ/ptop3/actions/workflows/ci.yml/badge.svg)](https://github.com/spazyCZ/ptop3/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
