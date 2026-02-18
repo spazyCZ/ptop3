@@ -32,10 +32,19 @@ jobs:
         run: ruff check ptop3/
 
       - name: Run tests
-        run: pytest --junitxml=test-results-${{ matrix.python-version }}.xml
+        run: pytest --junitxml=test-results-${{ matrix.python-version }}.xml --cov=ptop3 --cov-report=xml:coverage-${{ matrix.python-version }}.xml
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@v1
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          files: test-results-${{ matrix.python-version }}.xml
+
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage-${{ matrix.python-version }}.xml
