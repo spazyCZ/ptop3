@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ptop3"
+version = "0.1.0"
+description = "TUI process monitor that groups processes by application"
+requires-python = ">=3.10"
+dependencies = ["psutil>=5.9"]
+license = {text = "MIT"}
+readme = "README.md"
+
+[project.scripts]
+ptop3 = "ptop3.monitor:main"
+ptop3-drop-caches = "ptop3.scripts.drop_caches:main"
+ptop3-swap-clean = "ptop3.scripts.swap_clean:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "pytest-cov", "ruff", "mypy", "bump-my-version"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ptop3*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = false
+ignore_missing_imports = true
+
+[tool.bumpversion]
+current_version = "0.1.0"
+commit = true
+commit_args = "--no-verify"
+tag = true
+tag_name = "v{new_version}"
+message = "chore: bump version {current_version} → {new_version}"
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "ptop3/__init__.py"
+search = '__version__ = "{current_version}"'
+replace = '__version__ = "{new_version}"'
