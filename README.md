@@ -9,13 +9,13 @@ An htop-like TUI process monitor that groups processes by application.
 
 ## Screenshots
 
-![Group view](assets/printscreen_main.png)
+![Group view](https://raw.githubusercontent.com/spazyCZ/ptop3/main/assets/printscreen_main.png)
 *Main group view — processes grouped by application*
 
-![Detail view](assets/Screenshot_group.png)
+![Detail view](https://raw.githubusercontent.com/spazyCZ/ptop3/main/assets/Screenshot_group.png)
 *Detail view — individual processes for a selected group*
 
-![Tree view](assets/Screenshot_group_tree.png)
+![Tree view](https://raw.githubusercontent.com/spazyCZ/ptop3/main/assets/Screenshot_group_tree.png)
 *Tree view — process hierarchy within a group*
 
 ## Features
