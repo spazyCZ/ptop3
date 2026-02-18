@@ -2,7 +2,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/ptop3.svg)](https://pypi.org/project/ptop3/)
 [![Python versions](https://img.shields.io/pypi/pyversions/ptop3.svg)](https://pypi.org/project/ptop3/)
-[![CI](https://github.com/yourusername/ptop3/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/ptop3/actions)
+[![CI](https://github.com/spazyCZ/ptop3/actions/workflows/ci.yml/badge.svg)](https://github.com/spazyCZ/ptop3/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 An htop-like TUI process monitor that groups processes by application.
