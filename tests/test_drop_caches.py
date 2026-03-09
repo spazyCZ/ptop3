@@ -1,8 +1,9 @@
 """Tests for ptop3.scripts.drop_caches."""
-import pytest
-from unittest.mock import patch, call, mock_open, MagicMock
-from ptop3.scripts.drop_caches import read_mem_available, drop_caches
+from unittest.mock import MagicMock, patch
 
+import pytest
+
+from ptop3.scripts.drop_caches import drop_caches, read_mem_available
 
 # ---------------------------------------------------------------------------
 # read_mem_available
@@ -45,7 +46,7 @@ def test_drop_caches_writes_correct_level(tmp_path, tmp_meminfo):
 
     with patch("ptop3.scripts.drop_caches.subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=0)
-        freed = drop_caches(
+        drop_caches(
             level=2,
             dry_run=False,
             meminfo_path=tmp_meminfo,
@@ -96,3 +97,17 @@ def test_main_passes_when_root(tmp_path, tmp_meminfo):
                 ) as mock_dc:
                     main()
                     mock_dc.assert_called_once()
+
+
+def test_main_exits_on_oserror(capsys):
+    """main() should surface OSError from drop_caches()."""
+    from ptop3.scripts.drop_caches import main
+
+    with patch("os.geteuid", return_value=0):
+        with patch("sys.argv", ["ptop3-drop-caches"]):
+            with patch("ptop3.scripts.drop_caches.drop_caches", side_effect=OSError("boom")):
+                with pytest.raises(SystemExit) as exc_info:
+                    main()
+
+    assert exc_info.value.code == 1
+    assert "error: boom" in capsys.readouterr().err
