@@ -30,14 +30,16 @@ jobs:
             Review the diff of this PR (compare HEAD to the base branch) and:
             1. List every new or modified function/method in ptop3/ source files.
             2. Check tests/ to confirm each one has a corresponding test.
-            3. For any function missing a test, write the missing test(s) following the project rules:
-               - Mock /proc/* files with tmp_path fixtures
-               - Mock curses — never test TUI rendering directly
-               - Patch os.geteuid for root-required paths
-               - Tests must pass on Python 3.10–3.13
+            3. For any function missing a test, post a PR comment that:
+               - Identifies the untested function (module + name).
+               - Provides a ready-to-use test snippet following the project rules:
+                 * Mock /proc/* files with tmp_path fixtures
+                 * Mock curses — never test TUI rendering directly
+                 * Patch os.geteuid for root-required paths
+                 * Tests must pass on Python 3.10–3.13
             4. If all functions are covered, post a short confirmation comment.
-            5. If you added tests, create a commit on this PR branch with message "test: add missing tests for <summary>"
 
+            Do NOT modify files or create commits. All feedback must be via PR comments.
             Project test style is in tests/conftest.py and existing test files.
             Quality rules are in .github/instructions/code-review.instructions.md.
 
@@ -61,19 +63,22 @@ jobs:
             1. CHANGELOG check:
                - If any user-facing behavior changed (new feature, bug fix, CLI flag, keybinding),
                  verify CHANGELOG.md has an entry under ## [Unreleased].
-               - If missing, add the appropriate entry under the correct section
+               - If missing, post a PR comment that states what is missing and proposes
+                 the exact text to add under the correct section
                  (Added / Changed / Fixed / Security / Deprecated / Removed).
                - Do NOT bump version numbers.
 
             2. README check:
                - If new keybindings, CLI flags, or entry points were added, verify README.md documents them.
-               - If missing, add the documentation.
+               - If missing, post a PR comment explaining what is missing and proposing
+                 the exact wording or patch snippet to add.
 
             3. Docstring check:
-               - For any new public function in ptop3/ that lacks a docstring, add a one-line docstring.
+               - For any new public function in ptop3/ that lacks a docstring, post a PR comment
+                 identifying the function (module, name, signature) and proposing a one-line docstring.
 
-            If you made changes, commit them with message "docs: update changelog/readme for <summary>".
-            If everything is already documented, post a short confirmation comment.
+            Do NOT modify files or create commits. All feedback must be via PR comments.
+            If everything is already documented, post a short confirmation comment summarising what you checked.
 
   # Agent 3 — code quality and security review
   code-review-agent:
@@ -101,10 +106,8 @@ jobs:
             3. GitHub Actions: missing permissions blocks, missing skip-existing on TestPyPI steps.
             4. Module-specific rules from the instructions file.
 
-            For each issue found:
-            - Post an inline PR review comment at the exact file+line.
-            - If the fix is straightforward (style, missing guard), apply it directly and commit
-              with message "fix: <short description>".
-            - If the fix requires design decisions, comment only — do not auto-fix.
+            For each issue found, post an inline PR review comment at the exact file+line
+            with a clear explanation and a concrete suggested fix.
 
+            Do NOT modify files or create commits. All feedback must be via PR comments.
             If no issues are found, post a brief approval comment summarising what was checked.
