@@ -352,7 +352,7 @@ def test_get_proc_rows_filters_and_collects_metrics(monkeypatch):
 
     monkeypatch.setattr(monitor.psutil, "process_iter", lambda attrs=None: procs)
     monkeypatch.setattr(monitor.psutil, "virtual_memory", lambda: SimpleNamespace(total=1024 * 1024 * 1024))
-    monkeypatch.setattr(monitor, "read_vmswap_mb", lambda pid: 4.0 if pid == 10 else 0.0)
+    monkeypatch.setattr(monitor.ProcessSampler, "read_vmswap_mb", lambda self, pid: 4.0 if pid == 10 else 0.0)
 
     rows = monitor.get_proc_rows(filter_re=monitor.re.compile("python"))
 
@@ -847,6 +847,19 @@ def test_sampler_sample_process_cached_and_status_unknown(monkeypatch):
 
     assert row is not None
     assert row.status == "unknown"
+
+
+def test_sampler_sample_process_uses_sampler_swap_reader(monkeypatch):
+    sampler = monitor.ProcessSampler()
+    proc = _FakeProc(1, 0, "python3", ["python3"], rss_mb=64, cpu=3.0)
+
+    monkeypatch.setattr(monitor, "read_vmswap_mb", lambda pid: 0.0)
+    monkeypatch.setattr(monitor.ProcessSampler, "read_vmswap_mb", lambda self, pid: 7.0)
+
+    row = sampler._sample_process(proc, 1.0, 1.0, False, None)
+
+    assert row is not None
+    assert row.swap_mb == 7.0
 
 
 def test_sampler_sample_process_filtered_out_and_memory_denied(monkeypatch):

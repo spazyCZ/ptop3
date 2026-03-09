@@ -226,7 +226,7 @@ class ProcessSampler:
 
             rss_mb = rss_bytes / (1024 * 1024)
             cpu = 0.0 if lite and rss_mb < 2.0 else proc.cpu_percent()
-            swap_mb = _swap_value(proc.pid, rss_mb, lite)
+            swap_mb = _swap_value(proc.pid, rss_mb, lite, read_swap=self.read_vmswap_mb)
             io_read_mb, io_write_mb = _io_values(proc, rss_mb, lite)
 
             try:
@@ -291,11 +291,13 @@ def _matches_filter(filter_search, app: str, name: str, cmdline: str) -> bool:
     return bool(filter_search(app) or filter_search(name) or (cmdline and filter_search(cmdline)))
 
 
-def _swap_value(pid: int, rss_mb: float, lite: bool) -> float:
+def _swap_value(pid: int, rss_mb: float, lite: bool, read_swap=None) -> float:
+    if read_swap is None:
+        read_swap = read_vmswap_mb
     if not lite and rss_mb > 50:
-        return read_vmswap_mb(pid)
+        return read_swap(pid)
     if lite and rss_mb > 200:
-        return read_vmswap_mb(pid)
+        return read_swap(pid)
     return 0.0
 
 
