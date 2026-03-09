@@ -1,9 +1,7 @@
 """Tests for ptop3.sudo_config."""
-import os
-import pytest
-from unittest.mock import patch, MagicMock
-from ptop3.sudo_config import check_sudo, init_subscripts, _build_sudoers_content
+from unittest.mock import MagicMock, patch
 
+from ptop3.sudo_config import _build_sudoers_content, check_sudo, init_subscripts
 
 # ---------------------------------------------------------------------------
 # _build_sudoers_content
