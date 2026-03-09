@@ -1,0 +1,10 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+
+codecov:
+  notify:
+    after_n_builds: 4  # match matrix size (3.10, 3.11, 3.12, 3.13)
