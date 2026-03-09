@@ -22,7 +22,7 @@ An htop-like TUI process monitor that groups processes by application.
 
 - Groups processes by application name with smart alias resolution
 - Colored header with memory, swap, load-average badges
-- Sort by memory, CPU, RSS, swap, I/O, network, or count
+- Sort by memory, CPU, RSS, swap, I/O, or count
 - Regex filter across app name, process name, and cmdline
 - Process tree view within a selected application group
 - Kill signals (SIGTERM / SIGKILL) for individual processes or entire groups
@@ -75,7 +75,7 @@ ptop3 --check-sudo
 |------|---------|-------------|
 | `--once` | off | Print one-shot table and exit |
 | `-f/--filter REGEX` | — | Filter by app/name/cmdline |
-| `-s/--sort KEY` | `mem` | Sort key: mem, cpu, rss, swap, io, net, count |
+| `-s/--sort KEY` | `mem` | Sort key: mem, cpu, rss, swap, io, count |
 | `-n/--top N` | 15 | Rows to show in `--once` mode |
 | `--refresh SECS` | 2.0 | Refresh interval |
 | `--lite` | off | Lite mode: skip cmdline/IO for tiny procs |
@@ -117,9 +117,52 @@ ptop3-swap-clean --safety-mb 256 --dry-run
 ## Development
 
 ```bash
-git clone https://github.com/yourusername/ptop3
+git clone https://github.com/spazyCZ/ptop3
 cd ptop3
 pip install -e ".[dev]"
 pytest
 ruff check ptop3/
 ```
+
+## Branching Strategy
+
+```
+feature/xyz  ──PR──►  test  ──PR──►  main  ──tag v*.*.*──►  release
+```
+
+| Branch | Purpose |
+|--------|---------|
+| `feature/*` | Development — branch from `test`, PR back to `test` |
+| `test` | Staging — CI gate + auto-publish to TestPyPI on merge |
+| `main` | Production — only accepts PRs from `test`; tagged releases publish to PyPI |
+
+## CI / CD
+
+| Workflow | Trigger | Action |
+|----------|---------|--------|
+| CI | push / PR to `test` or `main` | ruff + pytest × Python 3.10–3.13 + Codecov |
+| Claude Code Review | PR opened / updated | Automated code review |
+| Claude Quality Gate | PR to `test` or `main` | Test coverage · changelog · security agents |
+| Publish to TestPyPI | merge to `test` | Build + publish (skips existing versions) |
+| Release | push tag `v*.*.*` | CI → GitHub Release with auto release notes |
+| Publish to PyPI | **manual** (`workflow_dispatch`) | CI → publish to production PyPI |
+
+### Release Process
+
+1. Merge all feature PRs into `test` and verify on TestPyPI:
+   ```bash
+   pip install -i https://test.pypi.org/simple/ ptop3
+   ```
+2. Bump the version (run on `test`):
+   ```bash
+   bump-my-version bump patch   # or minor / major
+   git push origin test
+   ```
+3. Open a PR from `test` → `main` and merge once CI is green.
+4. Tag the release on `main`:
+   ```bash
+   git tag v0.x.y
+   git push origin v0.x.y
+   ```
+   This creates the GitHub Release automatically.
+5. Publish to PyPI manually: **Actions → Publish to PyPI → Run workflow** — enter the tag.
