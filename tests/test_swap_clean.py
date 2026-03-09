@@ -1,8 +1,9 @@
 """Tests for ptop3.scripts.swap_clean."""
-import pytest
-from unittest.mock import patch, MagicMock, call
-from ptop3.scripts.swap_clean import read_meminfo, read_swaps, swap_clean
+from unittest.mock import MagicMock, patch
 
+import pytest
+
+from ptop3.scripts.swap_clean import read_meminfo, read_swaps, swap_clean
 
 # ---------------------------------------------------------------------------
 # read_meminfo
@@ -54,6 +55,16 @@ def test_read_swaps_multiple_entries(tmp_path):
     assert len(entries) == 2
     assert entries[0]["filename"] == "/dev/sda2"
     assert entries[1]["filename"] == "/swapfile"
+
+
+def test_read_swaps_skips_short_lines(tmp_path):
+    p = tmp_path / "swaps"
+    p.write_text(
+        "Filename\t\t\t\tType\t\tSize\t\tUsed\t\tPriority\n"
+        "broken line\n"
+    )
+
+    assert read_swaps(str(p)) == []
 
 
 # ---------------------------------------------------------------------------
@@ -175,6 +186,18 @@ def test_swap_clean_calls_swapoff_swapon(tmp_meminfo, tmp_swaps):
     assert ["swapon", "-a"] in called_cmds
 
 
+def test_swap_clean_returns_error_when_swapoff_fails(tmp_meminfo, tmp_swaps, capsys):
+    with patch("ptop3.scripts.swap_clean.subprocess.run", return_value=MagicMock(returncode=1, stderr="nope")):
+        rc = swap_clean(
+            target="/dev/sda2",
+            meminfo_path=tmp_meminfo,
+            swaps_path=tmp_swaps,
+        )
+
+    assert rc == 1
+    assert "error running swapoff: nope" in capsys.readouterr().err
+
+
 # ---------------------------------------------------------------------------
 # root check in main()
 # ---------------------------------------------------------------------------
@@ -186,3 +209,67 @@ def test_main_root_check_exits_when_not_root():
             with pytest.raises(SystemExit) as exc_info:
                 main()
     assert exc_info.value.code == 1
+
+
+def test_swap_clean_target_success_dry_run(tmp_meminfo, tmp_swaps, capsys):
+    rc = swap_clean(
+        target="/dev/sda2",
+        dry_run=True,
+        meminfo_path=tmp_meminfo,
+        swaps_path=tmp_swaps,
+    )
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "[dry-run] swapoff /dev/sda2" in out
+    assert "[dry-run] swapon /dev/sda2" in out
+
+
+def test_swap_clean_file_by_file_fallback(tmp_path, capsys):
+    meminfo = tmp_path / "meminfo"
+    swaps = tmp_path / "swaps"
+    meminfo.write_text(
+        "MemAvailable: 1000 kB\n"
+        "SwapTotal: 2000 kB\n"
+        "SwapFree: 0 kB\n"
+    )
+    swaps.write_text(
+        "Filename\t\t\t\tType\t\tSize\t\tUsed\t\tPriority\n"
+        "/swap-a\t\t\t\tfile\t\t1024\t\t400\t\t-2\n"
+        "/swap-b\t\t\t\tfile\t\t1024\t\t300\t\t-3\n"
+    )
+
+    mem_values = iter(
+        [
+            {"MemAvailable": 1000, "SwapTotal": 2000, "SwapFree": 0},
+            {"MemAvailable": 1000},
+            {"MemAvailable": 1000},
+        ]
+    )
+
+    with patch("ptop3.scripts.swap_clean.read_meminfo", side_effect=lambda path: next(mem_values)):
+        with patch("ptop3.scripts.swap_clean.subprocess.run", return_value=MagicMock(returncode=0)) as mock_run:
+            rc = swap_clean(
+                safety_mb=1,
+                meminfo_path=str(meminfo),
+                swaps_path=str(swaps),
+            )
+
+    assert rc == 0
+    assert "file-by-file" in capsys.readouterr().out
+    called_cmds = [call.args[0] for call in mock_run.call_args_list]
+    assert ["swapoff", "/swap-b"] in called_cmds
+    assert ["swapon", "/swap-b"] in called_cmds
+
+
+def test_main_passes_when_root():
+    from ptop3.scripts.swap_clean import main
+
+    with patch("os.geteuid", return_value=0):
+        with patch("sys.argv", ["ptop3-swap-clean", "--dry-run"]):
+            with patch("ptop3.scripts.swap_clean.swap_clean", return_value=0) as mock_clean:
+                with pytest.raises(SystemExit) as exc_info:
+                    main()
+
+    assert exc_info.value.code == 0
+    mock_clean.assert_called_once()

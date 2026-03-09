@@ -11,6 +11,12 @@ dependencies = ["psutil>=5.9"]
 license = {text = "MIT"}
 readme = "README.md"
 
+[project.urls]
+Homepage = "https://github.com/spazyCZ/ptop3"
+Repository = "https://github.com/spazyCZ/ptop3"
+Changelog = "https://github.com/spazyCZ/ptop3/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/spazyCZ/ptop3/issues"
+
 [project.scripts]
 ptop3 = "ptop3.monitor:main"
 ptop3-drop-caches = "ptop3.scripts.drop_caches:main"
@@ -25,7 +31,15 @@ include = ["ptop3*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["ptop3"]
+
+[tool.coverage.report]
+include = ["ptop3/*"]
+show_missing = true
 
 [tool.ruff]
 line-length = 100

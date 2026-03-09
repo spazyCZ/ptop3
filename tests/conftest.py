@@ -1,7 +1,6 @@
 """Shared fixtures for ptop3 tests."""
-import io
-import pytest
 
+import pytest
 
 MEMINFO_TEMPLATE = """\
 MemTotal:       32768000 kB
