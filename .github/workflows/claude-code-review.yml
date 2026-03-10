@@ -12,12 +12,6 @@ on:
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,21 +23,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           prompt: |
-            Review this pull request and focus on bugs, behavior regressions, security risks,
-            missing tests, and documentation mismatches.
+            You are a code review agent for the ptop3 project.
 
+            Review this pull request against the standards in
+            .github/instructions/code-review.instructions.md.
             Use the repository diff against the base branch as the review scope.
-            Post review feedback as PR comments only.
 
-            Do NOT modify files, create commits, or push branch changes.
-            If there are no findings, post a short approval-style summary comment.
+            Focus on:
+            - correctness bugs or behavioral regressions
+            - security issues and missing guards around privileged actions
+            - maintainability issues in changed code
+            - missing or weak test coverage for the changed behavior
+
+            For each issue found, post an inline PR review comment at the exact file and line
+            with a concise explanation and a concrete suggested fix.
+
+            Do NOT modify files or create commits. All feedback must be via PR comments.
+            If no issues are found, post a brief approval-style summary of what you checked.
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options

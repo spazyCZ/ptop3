@@ -352,7 +352,7 @@ def test_get_proc_rows_filters_and_collects_metrics(monkeypatch):
 
     monkeypatch.setattr(monitor.psutil, "process_iter", lambda attrs=None: procs)
     monkeypatch.setattr(monitor.psutil, "virtual_memory", lambda: SimpleNamespace(total=1024 * 1024 * 1024))
-    monkeypatch.setattr(monitor, "read_vmswap_mb", lambda pid: 4.0 if pid == 10 else 0.0)
+    monkeypatch.setattr(monitor.ProcessSampler, "read_vmswap_mb", lambda self, pid: 4.0 if pid == 10 else 0.0)
 
     rows = monitor.get_proc_rows(filter_re=monitor.re.compile("python"))
 
@@ -849,6 +849,19 @@ def test_sampler_sample_process_cached_and_status_unknown(monkeypatch):
     assert row.status == "unknown"
 
 
+def test_sampler_sample_process_uses_sampler_swap_reader(monkeypatch):
+    sampler = monitor.ProcessSampler()
+    proc = _FakeProc(1, 0, "python3", ["python3"], rss_mb=64, cpu=3.0)
+
+    monkeypatch.setattr(monitor, "read_vmswap_mb", lambda pid: 0.0)
+    monkeypatch.setattr(monitor.ProcessSampler, "read_vmswap_mb", lambda self, pid: 7.0)
+
+    row = sampler._sample_process(proc, 1.0, 1.0, False, None)
+
+    assert row is not None
+    assert row.swap_mb == 7.0
+
+
 def test_sampler_sample_process_filtered_out_and_memory_denied(monkeypatch):
     sampler = monitor.ProcessSampler()
     proc = _FakeProc(1, 0, "bash", ["bash"], rss_mb=4, cpu=1.0)
@@ -1258,7 +1271,7 @@ def test_monitor_additional_patch_coverage_paths(monkeypatch, capsys):
 
     assert monitor._safe_cmdline(MissingCmdProc()) == ""
 
-    monkeypatch.setattr(monitor, "read_vmswap_mb", lambda pid: 12.0)
+    monkeypatch.setattr(monitor.ProcessSampler, "read_vmswap_mb", lambda self, pid: 12.0)
     sampler = monitor.ProcessSampler()
     row = sampler._sample_process(_FakeProc(1, 0, "python3", ["python3"], rss_mb=256, cpu=3.0), 1.0, 1.0, True, None)
     assert row is not None

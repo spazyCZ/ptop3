@@ -31,6 +31,7 @@ include = ["ptop3*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "-v --tb=short"
 
 [tool.coverage.run]

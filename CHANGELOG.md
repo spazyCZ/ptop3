@@ -7,6 +7,7 @@
 - TestPyPI publish now triggers on merge to `test` branch (was `main`)
 - PyPI production publish is now manual (`workflow_dispatch`) instead of automatic on tag
 - GitHub Release creation on tag push remains automatic
+- `ptop3` no longer advertises or supports the non-functional `net` sort mode in the TUI/CLI
 
 ### Added
 - `CLAUDE.md` with project context for Claude Code agents

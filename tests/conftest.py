@@ -1,7 +1,6 @@
 """Shared fixtures for ptop3 tests."""
 import sys
 from pathlib import Path
-
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
