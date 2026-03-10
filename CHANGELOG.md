@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-03-10
+
 ### Changed
 - Branching strategy: `feature → test → main` (previously direct to `main`)
 - TestPyPI publish now triggers on merge to `test` branch (was `main`)
