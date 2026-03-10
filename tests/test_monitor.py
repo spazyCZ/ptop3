@@ -1215,3 +1215,312 @@ def test_sample_processes_surfaces_unexpected_error(monkeypatch):
 
     assert sample.rows == []
     assert sample.error.startswith("sampling warning:")
+
+
+def test_monitor_additional_patch_coverage_paths(monkeypatch, capsys):
+    assert normalize_app_name("node", "open chrome --new-window") == "chrome"
+
+    monkeypatch.setattr(monitor.shutil, "which", lambda name: None)
+    monkeypatch.setattr(monitor, "__file__", "/tmp/monitor.py")
+    assert monitor._find_subscript("ptop3-drop-caches") is None
+    assert monitor._subscript_cmd("ptop3-swap-clean") is None
+
+    monkeypatch.setattr(monitor.shutil, "which", lambda name: f"/usr/bin/{name}")
+    assert monitor._subscript_cmd("ptop3-swap-clean") == ["/usr/bin/ptop3-swap-clean"]
+
+    assert monitor.visible_window_start(selected=2, current_start=5, window_size=4, total=10) == 2
+
+    groups = [
+        monitor.GroupRow(app="mem", procs=1, rss_mb=1, mem_pct=9, cpu=1, swap_mb=1, io_read_mb=0, io_write_mb=0),
+        monitor.GroupRow(app="cpu", procs=1, rss_mb=1, mem_pct=1, cpu=9, swap_mb=1, io_read_mb=0, io_write_mb=0),
+        monitor.GroupRow(app="rss", procs=1, rss_mb=9, mem_pct=1, cpu=1, swap_mb=1, io_read_mb=0, io_write_mb=0),
+        monitor.GroupRow(app="swap", procs=1, rss_mb=1, mem_pct=1, cpu=1, swap_mb=9, io_read_mb=0, io_write_mb=0),
+        monitor.GroupRow(app="io", procs=1, rss_mb=1, mem_pct=1, cpu=1, swap_mb=1, io_read_mb=5, io_write_mb=5),
+        monitor.GroupRow(app="count", procs=9, rss_mb=1, mem_pct=1, cpu=1, swap_mb=1, io_read_mb=0, io_write_mb=0),
+    ]
+    assert monitor.sort_groups(groups[:], "mem")[0].app == "mem"
+    assert monitor.sort_groups(groups[:], "rss")[0].app == "rss"
+    assert monitor.sort_groups(groups[:], "swap")[0].app == "swap"
+
+    rows = [
+        _make_row(pid=10, mem_pct=9, cpu=1, rss_mb=1, swap_mb=1, io_read_mb=0, io_write_mb=0),
+        _make_row(pid=11, mem_pct=1, cpu=9, rss_mb=1, swap_mb=1, io_read_mb=0, io_write_mb=0),
+        _make_row(pid=12, mem_pct=1, cpu=1, rss_mb=9, swap_mb=1, io_read_mb=0, io_write_mb=0),
+        _make_row(pid=13, mem_pct=1, cpu=1, rss_mb=1, swap_mb=9, io_read_mb=0, io_write_mb=0),
+        _make_row(pid=14, mem_pct=1, cpu=1, rss_mb=1, swap_mb=1, io_read_mb=5, io_write_mb=5),
+    ]
+    assert monitor.sort_processes(rows[:], "mem")[0].pid == 10
+    assert monitor.sort_processes(rows[:], "swap")[0].pid == 13
+    assert monitor.sort_processes(rows[:], "io")[0].pid == 14
+    assert monitor.sort_processes(rows[:], "count")[0].pid == 14
+
+    class DeniedProc:
+        def io_counters(self):
+            raise monitor.psutil.AccessDenied(pid=1)
+
+    class EmptyProc:
+        def io_counters(self):
+            return None
+
+    assert monitor._io_values(DeniedProc(), 64, False) == (0.0, 0.0)
+    assert monitor._io_values(EmptyProc(), 64, False) == (0.0, 0.0)
+
+    class MissingCmdProc:
+        def cmdline(self):
+            raise monitor.psutil.NoSuchProcess(pid=1)
+
+    assert monitor._safe_cmdline(MissingCmdProc()) == ""
+
+    monkeypatch.setattr(monitor.ProcessSampler, "read_vmswap_mb", lambda self, pid: 12.0)
+    sampler = monitor.ProcessSampler()
+    row = sampler._sample_process(_FakeProc(1, 0, "python3", ["python3"], rss_mb=256, cpu=3.0), 1.0, 1.0, True, None)
+    assert row is not None
+    assert row.swap_mb == 12.0
+    assert row.status == "running"
+
+    dummy_procs = [object(), object()]
+    monkeypatch.setattr(monitor.psutil, "virtual_memory", lambda: SimpleNamespace(total=1024))
+    monkeypatch.setattr(monitor.psutil, "process_iter", lambda attrs=None: dummy_procs)
+    calls = {"count": 0}
+
+    def fake_sample_process(self, proc, now, inv_mem_total, lite, filter_search):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise monitor.psutil.AccessDenied(pid=1)
+        return _make_row(pid=2)
+
+    monkeypatch.setattr(monitor.ProcessSampler, "_sample_process", fake_sample_process)
+    sample = sampler.sample(None)
+    assert [item.pid for item in sample.rows] == [2]
+    assert sample.error == ""
+
+    nested_tree = build_process_tree(
+        [
+            _make_row(pid=1, ppid=0, name="root", rss_mb=100.0),
+            _make_row(pid=2, ppid=1, name="child-a", rss_mb=90.0),
+            _make_row(pid=3, ppid=2, name="grandchild", rss_mb=80.0),
+            _make_row(pid=4, ppid=1, name="child-b", rss_mb=70.0),
+        ],
+        sort_key="rss",
+    )
+    assert nested_tree[2][2].startswith("│   ")
+
+    monkeypatch.setattr(monitor, "sample_processes", lambda filter_re: monitor.SampleResult([_make_row(app="foo")], "sampling warning: boom"))
+    monitor.print_once(None, "mem", 1)
+    captured = capsys.readouterr()
+    assert "sampling warning: boom" in captured.err
+
+
+def test_tui_and_alert_additional_patch_coverage(monkeypatch):
+    tui = object.__new__(monitor.TUI)
+    tui.view = "groups"
+    tui.groups = []
+    tui.tree_mode = False
+    tui.detail_list = []
+    tui.detail_tree = []
+    tui.sel = 0
+    assert tui._selected_group() is None
+
+    tui.view = "detail"
+    tui.tree_mode = True
+    assert tui._selected_proc() is None
+    tui.tree_mode = False
+    assert tui._selected_proc() is None
+
+    tui.view = "groups"
+    tui.toggle_view()
+    assert tui.view == "groups"
+
+    tui.status = lambda msg: setattr(tui, "last_status", msg)
+    tui.kill_selected(monitor.signal.SIGTERM)
+    assert not hasattr(tui, "last_status")
+
+    class DeniedSignalProcess:
+        def send_signal(self, sig):
+            raise monitor.psutil.AccessDenied(pid=42)
+
+    tui.view = "detail"
+    tui.tree_mode = False
+    tui.detail_list = [_make_row(pid=42, name="worker")]
+    monkeypatch.setattr(monitor.psutil, "Process", lambda pid: DeniedSignalProcess())
+    tui.kill_selected(monitor.signal.SIGTERM)
+    assert "42" in tui.last_status
+
+    tui.view = "groups"
+    tui.groups = []
+    delattr(tui, "last_status")
+    tui.kill_group()
+    assert not hasattr(tui, "last_status")
+
+    class MissingProcess:
+        def name(self):
+            raise monitor.psutil.NoSuchProcess(pid=1)
+
+    tui.groups = [SimpleNamespace(app="python")]
+    monkeypatch.setattr(monitor.psutil, "process_iter", lambda: [MissingProcess()])
+    tui.kill_group()
+    assert "0 procs" in tui.last_status
+
+    class CmdDeniedProcess:
+        def name(self):
+            return "python3"
+
+        def cmdline(self):
+            raise monitor.psutil.AccessDenied(pid=1)
+
+        def send_signal(self, sig):
+            raise AssertionError("unexpected signal")
+
+    tui.groups = [SimpleNamespace(app="bash")]
+    monkeypatch.setattr(monitor.psutil, "process_iter", lambda: [CmdDeniedProcess()])
+    tui.kill_group()
+    assert "0 procs" in tui.last_status
+
+    monkeypatch.setattr(monitor, "_subscript_cmd", lambda name: ["helper"])
+    msgs = []
+    tui.status = lambda msg: msgs.append(msg)
+    tui.draw = lambda: None
+
+    monkeypatch.setattr(monitor.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(
+        monitor.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=0, stderr="", stdout="done"),
+    )
+    tui.run_swap_clean()
+
+    monkeypatch.setattr(
+        monitor.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=2, stderr="failed badly", stdout=""),
+    )
+    tui.run_swap_clean()
+
+    monkeypatch.setattr(monitor.os, "geteuid", lambda: 1000)
+    monkeypatch.setattr(
+        monitor.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=1, stderr="sudo: a password is required", stdout=""),
+    )
+    tui.run_drop_caches()
+
+    def raise_run(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(monitor.subprocess, "run", raise_run)
+    tui.run_drop_caches()
+
+    assert "swap-clean finished" in msgs
+    assert any(msg.startswith("swap-clean failed (2)") for msg in msgs)
+    assert any(msg.startswith("drop-caches needs NOPASSWD sudo") for msg in msgs)
+    assert any(msg.startswith("drop-caches error:") for msg in msgs)
+
+    keys = [ord("k"), ord("K"), ord("q")]
+    run_tui, _screen = _make_initialized_tui(monkeypatch, keys=keys)
+    calls = []
+    run_tui.sample = lambda: None
+    run_tui.draw = lambda: None
+    run_tui.length = lambda: 1
+    run_tui.kill_group = lambda sig=monitor.signal.SIGTERM: calls.append(sig)
+    run_tui.run()
+    assert calls == [monitor.signal.SIGTERM, monitor.signal.SIGKILL]
+
+
+def test_draw_and_collect_alerts_additional_patch_coverage(monkeypatch):
+    tui, screen = _make_initialized_tui(monkeypatch)
+    tui.groups = [monitor.GroupRow(app="python", procs=1, rss_mb=10.0, mem_pct=5.0, cpu=8.0, swap_mb=1.0, io_read_mb=0.0, io_write_mb=0.0)]
+    tui.sel = 0
+    tui.scroll = 0
+    tui.status_msg = ""
+    tui.status_time = 0.0
+    tui.sample_error = ""
+    tui.alerts_cache = []
+    tui.alerts_cache_time = 0.0
+    tui.last_proc_rows = []
+    tui.collect_alerts = lambda: []
+    monkeypatch.setattr(monitor.time, "time", lambda: 1.0)
+    monkeypatch.setattr(monitor.os, "getloadavg", lambda: (3.0, 0.5, 0.2))
+    monkeypatch.setattr(monitor.os, "cpu_count", lambda: 1)
+    monkeypatch.setattr(
+        monitor.psutil,
+        "virtual_memory",
+        lambda: SimpleNamespace(
+            used=7 * 1024**3,
+            total=8 * 1024**3,
+            available=1 * 1024**3,
+            free=int(0.5 * 1024**3),
+            buffers=1 * 1024**3,
+            cached=1 * 1024**3,
+            percent=80.0,
+        ),
+    )
+    monkeypatch.setattr(monitor.psutil, "swap_memory", lambda: SimpleNamespace(used=2 * 1024**3, total=3 * 1024**3, percent=60.0))
+    tui.draw()
+    attrs = [call[4] for call in screen.calls if call[0] == 0]
+    assert monitor.curses.color_pair(18) | monitor.curses.A_BOLD in attrs
+    assert monitor.curses.color_pair(19) | monitor.curses.A_BOLD in attrs
+
+    screen.calls.clear()
+    monkeypatch.setattr(monitor.os, "getloadavg", lambda: (3.0, 0.5, 0.2))
+    monkeypatch.setattr(monitor.os, "cpu_count", lambda: 2)
+    monkeypatch.setattr(
+        monitor.psutil,
+        "virtual_memory",
+        lambda: SimpleNamespace(
+            used=7 * 1024**3,
+            total=8 * 1024**3,
+            available=1 * 1024**3,
+            free=int(0.5 * 1024**3),
+            buffers=1 * 1024**3,
+            cached=1 * 1024**3,
+            percent=96.0,
+        ),
+    )
+    monkeypatch.setattr(monitor.psutil, "swap_memory", lambda: SimpleNamespace(used=2 * 1024**3, total=3 * 1024**3, percent=90.0))
+    tui.draw()
+
+    _patch_fake_curses(monkeypatch)
+    small_screen = _FakeScreen()
+    small_screen.getmaxyx = lambda: (8, 80)
+    small_tui = monitor.TUI(small_screen, None, "mem", 2.0)
+    small_tui.groups = [monitor.GroupRow(app="python", procs=1, rss_mb=10.0, mem_pct=5.0, cpu=8.0, swap_mb=1.0, io_read_mb=0.0, io_write_mb=0.0)]
+    small_tui.collect_alerts = lambda: [f"alert {idx}" for idx in range(6)]
+    monkeypatch.setattr(monitor.psutil, "virtual_memory", lambda: SimpleNamespace(used=1, total=8 * 1024**3, available=4 * 1024**3, free=3 * 1024**3, buffers=1 * 1024**3, cached=1 * 1024**3, percent=30.0))
+    monkeypatch.setattr(monitor.psutil, "swap_memory", lambda: SimpleNamespace(used=1, total=2 * 1024**3, percent=20.0))
+    monkeypatch.setattr(monitor.os, "getloadavg", lambda: (1.0, 0.5, 0.2))
+    monkeypatch.setattr(monitor.os, "cpu_count", lambda: 4)
+    small_tui.draw()
+    alert_calls = [call for call in small_screen.calls if call[2].startswith("alert ")]
+    assert len(alert_calls) < 6
+
+    alerts_tui = object.__new__(monitor.TUI)
+    alerts_tui.alerts_cache = []
+    alerts_tui.alerts_cache_time = 0.0
+    alerts_tui.last_proc_rows = [
+        _make_row(pid=1, app="python", cpu=120.0, mem_pct=12.0, swap_mb=600.0, io_read_mb=20.0, io_write_mb=0.0, status="running", cmdline="python worker"),
+    ]
+    alerts_tui.groups = [monitor.GroupRow(app="python", procs=2, rss_mb=10.0, mem_pct=5.0, cpu=120.0, swap_mb=100.0, io_read_mb=0.0, io_write_mb=0.0)]
+    monkeypatch.setattr(monitor.time, "time", lambda: 100.0)
+    monkeypatch.setattr(monitor.time, "strftime", lambda fmt: "12:00:00")
+    monkeypatch.setattr(monitor.psutil, "virtual_memory", lambda: SimpleNamespace(percent=90.0))
+    monkeypatch.setattr(monitor.psutil, "swap_memory", lambda: SimpleNamespace(percent=70.0))
+    monkeypatch.setattr(monitor.psutil, "disk_usage", lambda path: SimpleNamespace(percent=90.0))
+    alerts = alerts_tui.collect_alerts()
+    assert any("High memory usage" in alert for alert in alerts)
+    assert any("High disk usage" in alert for alert in alerts)
+    assert any("High CPU" in alert for alert in alerts)
+    assert any("High memory (" in alert for alert in alerts)
+    assert any("High swap" in alert for alert in alerts)
+    assert any("Group high CPU" in alert for alert in alerts)
+
+    disk_tui = object.__new__(monitor.TUI)
+    disk_tui.alerts_cache = []
+    disk_tui.alerts_cache_time = 0.0
+    disk_tui.last_proc_rows = []
+    disk_tui.groups = []
+    monkeypatch.setattr(monitor.time, "time", lambda: 1.0)
+    monkeypatch.setattr(monitor.time, "strftime", lambda fmt: "12:00:00")
+    monkeypatch.setattr(monitor.psutil, "virtual_memory", lambda: SimpleNamespace(percent=10.0))
+    monkeypatch.setattr(monitor.psutil, "swap_memory", lambda: SimpleNamespace(percent=10.0))
+    monkeypatch.setattr(monitor.psutil, "disk_usage", lambda path: (_ for _ in ()).throw(OSError("boom")))
+    assert disk_tui.collect_alerts() == []

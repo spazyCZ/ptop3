@@ -253,7 +253,7 @@ def test_swap_clean_file_by_file_fallback(tmp_path, capsys):
                 safety_mb=1,
                 meminfo_path=str(meminfo),
                 swaps_path=str(swaps),
-    )
+            )
 
     assert rc == 0
     captured = capsys.readouterr()

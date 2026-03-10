@@ -36,6 +36,7 @@ jobs:
 
             Review this pull request against the standards in
             .github/instructions/code-review.instructions.md.
+            Use the repository diff against the base branch as the review scope.
 
             Focus on:
             - correctness bugs or behavioral regressions
