@@ -253,10 +253,12 @@ def test_swap_clean_file_by_file_fallback(tmp_path, capsys):
                 safety_mb=1,
                 meminfo_path=str(meminfo),
                 swaps_path=str(swaps),
-            )
+    )
 
     assert rc == 0
-    assert "file-by-file" in capsys.readouterr().out
+    captured = capsys.readouterr()
+    assert "Not enough RAM to clean all swap at once. Trying file-by-file..." in captured.err
+    assert "Swap clean completed (file-by-file)." in captured.out
     called_cmds = [call.args[0] for call in mock_run.call_args_list]
     assert ["swapoff", "/swap-b"] in called_cmds
     assert ["swapon", "/swap-b"] in called_cmds

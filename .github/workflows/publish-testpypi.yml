@@ -15,8 +15,10 @@ jobs:
   publish:
     needs: [test]
     runs-on: ubuntu-latest
+    environment: testpypi
     permissions:
       contents: read  # checkout only
+      id-token: write  # required for Trusted Publishing
 
     steps:
       - uses: actions/checkout@v4
@@ -27,7 +29,53 @@ jobs:
           python-version: "3.12"
 
       - name: Install build tools
-        run: pip install build
+        run: pip install build packaging
+
+      - name: Set unique TestPyPI version
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          from packaging.version import Version
+
+          pyproject = Path("pyproject.toml")
+          init_py = Path("ptop3/__init__.py")
+
+          pyproject_text = pyproject.read_text()
+          match = re.search(r'^version = "([^"]+)"', pyproject_text, re.M)
+          if not match:
+              raise SystemExit("Could not find project version in pyproject.toml")
+
+          base = Version(match.group(1))
+          test_version = f"{base.major}.{base.minor}.{base.micro + 1}.dev{os.environ['RUN_NUMBER']}"
+
+          pyproject.write_text(
+              re.sub(
+                  r'^version = "[^"]+"',
+                  f'version = "{test_version}"',
+                  pyproject_text,
+                  count=1,
+                  flags=re.M,
+              )
+          )
+
+          init_text = init_py.read_text()
+          init_py.write_text(
+              re.sub(
+                  r'^__version__ = "[^"]+"',
+                  f'__version__ = "{test_version}"',
+                  init_text,
+                  count=1,
+                  flags=re.M,
+              )
+          )
+
+          print(f"Publishing TestPyPI version: {test_version}")
+          PY
 
       - name: Build package
         run: python -m build
@@ -36,5 +84,4 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
-          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           skip-existing: true
