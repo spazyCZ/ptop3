@@ -1435,6 +1435,7 @@ def test_tui_and_alert_additional_patch_coverage(monkeypatch):
 
 def test_draw_and_collect_alerts_additional_patch_coverage(monkeypatch):
     tui, screen = _make_initialized_tui(monkeypatch)
+    # Keep enough horizontal space so all header badges (including rx/tx) are rendered.
     screen.getmaxyx = lambda: (24, 160)
     tui.groups = [monitor.GroupRow(app="python", procs=1, rss_mb=10.0, mem_pct=5.0, cpu=8.0, swap_mb=1.0, io_read_mb=0.0, io_write_mb=0.0)]
     tui.sel = 0
