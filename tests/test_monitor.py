@@ -1469,6 +1469,9 @@ def test_draw_and_collect_alerts_additional_patch_coverage(monkeypatch):
     )
     monkeypatch.setattr(monitor.psutil, "swap_memory", lambda: SimpleNamespace(used=2 * 1024**3, total=3 * 1024**3, percent=60.0))
     tui.draw()
+    rendered = "\n".join(call[2] for call in screen.calls)
+    assert " rx " in rendered
+    assert " tx " in rendered
     attrs = [call[4] for call in screen.calls if call[0] == 0]
     assert monitor.curses.color_pair(18) | monitor.curses.A_BOLD in attrs
     assert monitor.curses.color_pair(19) | monitor.curses.A_BOLD in attrs
