@@ -707,6 +707,13 @@ class TUI:
         sm = psutil.swap_memory()
         gib = 1024 ** 3
         try:
+            net = psutil.net_io_counters()
+            rx_gib = net.bytes_recv / gib
+            tx_gib = net.bytes_sent / gib
+        except (OSError, AttributeError):
+            rx_gib = 0.0
+            tx_gib = 0.0
+        try:
             l1, l5, l15 = os.getloadavg()
         except OSError:
             l1 = l5 = l15 = 0.0
@@ -762,6 +769,8 @@ class TUI:
             ("buf", f"{mem_buf:.1f}G", bg_buf, bg_neut),
             ("cache", f"{mem_cache:.1f}G", bg_buf, bg_neut),
             ("swap", f"{sm.used/gib:.1f}/{sm.total/gib:.1f}G", bg_swap_l, swap_bg(sm.percent)),
+            ("rx", f"{rx_gib:.1f}G", bg_label, bg_neut),
+            ("tx", f"{tx_gib:.1f}G", bg_label, bg_neut),
             ("load", f"{l1:.2f} {l5:.2f} {l15:.2f}", bg_label, load_bg(l1)),
             ("sort", self.sort_key, bg_label, bg_neut),
             ("ref", f"{self.refresh:.1f}s", bg_label, bg_neut),

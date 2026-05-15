@@ -15,6 +15,7 @@
 - Claude Quality Gate workflow: three parallel agents for test coverage, changelog, and code review
 - Branch protection on `test` (CI required) and `main` (CI + PR + linear history required)
 - `publish-pypi.yml` workflow for manual production releases
+- TUI top status line now includes cumulative network RX/TX metrics
 
 ## [0.1.3] - 2026-02-18
 
