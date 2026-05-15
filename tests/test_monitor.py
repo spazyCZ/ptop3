@@ -948,6 +948,11 @@ def test_tui_draw_group_and_detail_views(monkeypatch):
     monkeypatch.setattr(monitor.time, "time", lambda: 1.0)
     monkeypatch.setattr(monitor.os, "getloadavg", lambda: (1.0, 0.5, 0.2))
     monkeypatch.setattr(monitor.os, "cpu_count", lambda: 4)
+    monkeypatch.setattr(
+        monitor.psutil,
+        "net_io_counters",
+        lambda: SimpleNamespace(bytes_recv=2 * 1024**3, bytes_sent=1 * 1024**3),
+    )
     monkeypatch.setattr(monitor.psutil, "virtual_memory", lambda: SimpleNamespace(used=2 * 1024**3, total=8 * 1024**3, available=4 * 1024**3, free=3 * 1024**3, buffers=1 * 1024**3, cached=1 * 1024**3, percent=30.0))
     monkeypatch.setattr(monitor.psutil, "swap_memory", lambda: SimpleNamespace(used=1 * 1024**3, total=2 * 1024**3, percent=25.0))
     monkeypatch.setattr(tui, "collect_alerts", lambda: ["critical alert"])
@@ -957,6 +962,8 @@ def test_tui_draw_group_and_detail_views(monkeypatch):
     rendered = "\n".join(call[2] for call in screen.calls)
     assert "python" in rendered
     assert "critical alert" in rendered
+    assert " rx " in rendered
+    assert " tx " in rendered
 
     screen.calls.clear()
     tui.view = "detail"
@@ -1428,6 +1435,7 @@ def test_tui_and_alert_additional_patch_coverage(monkeypatch):
 
 def test_draw_and_collect_alerts_additional_patch_coverage(monkeypatch):
     tui, screen = _make_initialized_tui(monkeypatch)
+    screen.getmaxyx = lambda: (24, 160)
     tui.groups = [monitor.GroupRow(app="python", procs=1, rss_mb=10.0, mem_pct=5.0, cpu=8.0, swap_mb=1.0, io_read_mb=0.0, io_write_mb=0.0)]
     tui.sel = 0
     tui.scroll = 0
@@ -1441,6 +1449,11 @@ def test_draw_and_collect_alerts_additional_patch_coverage(monkeypatch):
     monkeypatch.setattr(monitor.time, "time", lambda: 1.0)
     monkeypatch.setattr(monitor.os, "getloadavg", lambda: (3.0, 0.5, 0.2))
     monkeypatch.setattr(monitor.os, "cpu_count", lambda: 1)
+    monkeypatch.setattr(
+        monitor.psutil,
+        "net_io_counters",
+        lambda: SimpleNamespace(bytes_recv=2 * 1024**3, bytes_sent=1 * 1024**3),
+    )
     monkeypatch.setattr(
         monitor.psutil,
         "virtual_memory",
@@ -1465,6 +1478,11 @@ def test_draw_and_collect_alerts_additional_patch_coverage(monkeypatch):
     monkeypatch.setattr(monitor.os, "cpu_count", lambda: 2)
     monkeypatch.setattr(
         monitor.psutil,
+        "net_io_counters",
+        lambda: SimpleNamespace(bytes_recv=2 * 1024**3, bytes_sent=1 * 1024**3),
+    )
+    monkeypatch.setattr(
+        monitor.psutil,
         "virtual_memory",
         lambda: SimpleNamespace(
             used=7 * 1024**3,
@@ -1487,6 +1505,11 @@ def test_draw_and_collect_alerts_additional_patch_coverage(monkeypatch):
     small_tui.collect_alerts = lambda: [f"alert {idx}" for idx in range(6)]
     monkeypatch.setattr(monitor.psutil, "virtual_memory", lambda: SimpleNamespace(used=1, total=8 * 1024**3, available=4 * 1024**3, free=3 * 1024**3, buffers=1 * 1024**3, cached=1 * 1024**3, percent=30.0))
     monkeypatch.setattr(monitor.psutil, "swap_memory", lambda: SimpleNamespace(used=1, total=2 * 1024**3, percent=20.0))
+    monkeypatch.setattr(
+        monitor.psutil,
+        "net_io_counters",
+        lambda: SimpleNamespace(bytes_recv=2 * 1024**3, bytes_sent=1 * 1024**3),
+    )
     monkeypatch.setattr(monitor.os, "getloadavg", lambda: (1.0, 0.5, 0.2))
     monkeypatch.setattr(monitor.os, "cpu_count", lambda: 4)
     small_tui.draw()

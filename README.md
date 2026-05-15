@@ -21,7 +21,7 @@ An htop-like TUI process monitor that groups processes by application.
 ## Features
 
 - Groups processes by application name with smart alias resolution
-- Colored header with memory, swap, load-average badges
+- Colored header with memory, swap, network, and load-average badges
 - Sort by memory, CPU, RSS, swap, I/O, or count
 - Regex filter across app name, process name, and cmdline
 - Process tree view within a selected application group
