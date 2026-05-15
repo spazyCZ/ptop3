@@ -960,10 +960,13 @@ def test_tui_draw_group_and_detail_views(monkeypatch):
     tui.draw()
 
     rendered = "\n".join(call[2] for call in screen.calls)
+    header_parts = [call[2] for call in screen.calls if call[0] == 0]
     assert "python" in rendered
     assert "critical alert" in rendered
-    assert " rx \n 2.0G " in rendered
-    assert " tx \n 1.0G " in rendered
+    assert " rx " in header_parts
+    assert " tx " in header_parts
+    assert " 2.0G " in header_parts
+    assert " 1.0G " in header_parts
 
     screen.calls.clear()
     tui.view = "detail"
